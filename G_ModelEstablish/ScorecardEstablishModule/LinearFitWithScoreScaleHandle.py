@@ -59,7 +59,6 @@ class LinearFitWithScoreScaleClass():
         输出：
         dataForLr: 带违约概率和模型分数的数据集合 DataFrame
         lrSmallP: 线性拟合的所有汇总性结果
-        lrSmallPResult: 线性拟合的所有汇总性pandas提取
 
         管理记录：
         1. edited by 王文丹 2021/07/26
@@ -67,39 +66,14 @@ class LinearFitWithScoreScaleClass():
 
         xSmallP = dataForLr[fiteredvarWoe]
         xSmallP['intercept'] = [1]*xSmallP.shape[0]
-        # print(xSmallP)
+        print(xSmallP)
         lrSmallP = Logit(dataForLr[self.ylabel],xSmallP).fit()
         lrSmallPSummary = lrSmallP.summary()
         print(lrSmallPSummary) # 输出所有拟合的汇总性结果
         dataForLr['yPred'] = lrSmallP.predict(xSmallP)
         dataForLr['score'] = dataForLr['yPred'].map(lambda x:self.proba_2Score(x))
 
-        # 保存Logit逻辑回归的结果参数pandas格式
-        lrSmallPResultLeft = pd.DataFrame([lrSmallP.params,lrSmallP.bse,lrSmallP.tvalues,lrSmallP.pvalues]).T.reset_index(level=0)
-        lrSmallPResultRight = pd.DataFrame(lrSmallP.conf_int()).reset_index(level=0)
-        lrSmallPResult = pd.merge(lrSmallPResultLeft,lrSmallPResultRight,on='index',how = 'left')
-        lrSmallPResult.columns = ['特征名称','coef','std err','z','p>|z|','[0.025','0.975]']
-
-        # 分数打分表
-        ScoreFrame1 = -(self.pdo/np.log(2))*(list(lrSmallP.params)*xSmallP)
-        xSmallP.columns = [col.replace('intercept','intercept_Bin_WOE') for col in xSmallP.columns]
-        ScoreFrame1.columns = [col.replace('_Bin_WOE','')+'_Score' for col in ScoreFrame1.columns]
-        ScoreFrame = pd.concat([xSmallP,ScoreFrame1],axis=1)
-        
-        # 分数分组打分Regroup
-        ScoreRegroup = {}
-        # colScoreName = [col.replace('_Score','') for col in ScoreFrame1.columns]
-        for col in ScoreFrame1.columns:
-            col = col.replace('_Score','')
-            SingleScoreBin = sorted(set(ScoreFrame[col+'_Bin_WOE']))
-            n1 = pd.DataFrame(SingleScoreBin)
-            n1['分数分档'] = np.inf
-            n1.columns = [col+'_Bin_WOE','分数分档']
-            for i in SingleScoreBin:
-                n1.loc[n1[col+'_Bin_WOE']==i,'分数分档'] = ScoreFrame[ScoreFrame[col+'_Bin_WOE']==i].reset_index(level=0)[col+'_Score'][0]
-            ScoreRegroup[col] = n1
-
-        return (dataForLr,lrSmallPSummary,lrSmallPResult,ScoreFrame,ScoreRegroup)
+        return (dataForLr,lrSmallPSummary)
 
     
 

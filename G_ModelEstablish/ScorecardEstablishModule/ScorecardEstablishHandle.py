@@ -9,9 +9,10 @@ from D_SplitData.SplitPointApplyModule.SplitPointApplyHandle import SplitPointAp
 from E_BinResult.TotalSplitApplyModule.TotalSplitApplyHandle import TotalSplitApplyClass
 from E_BinResult.TotalSplitApplyModule.WoeTransformHandle import WoeTransformClass
 from F_SelectChar.FeaSelectSummaryModule.ZFeaSelectCallHandle import FeaSelectProcessClass
-from F_SelectChar.FeaSelectProcessModule.FeaStabSelectHandle import FeaStabSelectClass
 from G_ModelEstablish.ScorecardEstablishModule.LinearFitWithScoreScaleHandle import LinearFitWithScoreScaleClass
 from I_ModelDisplay.DisplayFormModule.DisplayFormHandle import DisplayFormClass
+from I_ModelDisplay.ScorecardDisplayModule.ScorecardDisplayHandle import ModelDisplayClass
+
 
 class ScorecardEstablishClass():
 
@@ -40,9 +41,10 @@ class ScorecardEstablishClass():
 
     管理记录：
     1. edited by 王文丹 2021/07/19
+    2. altered by 马文会 2021/09/15
 
     """
-    def __init__(self,thresholdMissingDele,styleFillingVar,specialValue,thresholdSingleDrop,listNeedTransform,ylabel,listDropRepeat,objectNeedRemove,NumNeedRemove,pathSaved,maxNumBox,binMethod,cutParameters,needModifyDict,ivThreshold,xgbSelectNum,psiThreshold,corrThreshold,vifThreshold,pThreshold,selection,sle,sls,includes,baseScore,pdo):
+    def __init__(self,thresholdMissingDele,styleFillingVar,specialValue,thresholdSingleDrop,listNeedTransform,ylabel,listDropRepeat,objectNeedRemove,NumNeedRemove,pathSaved,maxNumBox,binMethod,cutParameters,needModifyDict,ivThreshold,xgbSelectNum,psiThreshold,corrThreshold,vifThreshold,pThreshold,selection,sle,sls,includes,baseScore,pdo,numForSplit,preThreshold):
 
         self.thresholdMissingDele = thresholdMissingDele  #缺失删除阈值 
         self.styleFillingVar = styleFillingVar #缺失填充方式 int ('1':统一填充为missing,'2':中位数,'3':均值,'4':众数)
@@ -72,6 +74,11 @@ class ScorecardEstablishClass():
         # 以下是评分卡分数的参数
         self.baseScore = baseScore #基础分数
         self.pdo = pdo #分数刻度
+
+        # 增加 - 以下是model效果展示需要的参数
+        self.numForSplit = numForSplit # 用于最后
+        self.preThreshold = preThreshold #经验定义的坏样本的阈值 
+    
         
 
     def scorecard_establishment(self,dataPath,dataStyle,dataDictPath,dataPathStyle,nameMappingLeft,nameMappingRight,dataSeparation):
@@ -168,7 +175,6 @@ class ScorecardEstablishClass():
         IVSumSplitedTest = pd.DataFrame([colName,IVSumSplitedTest]).T
         IVSumSplitedTest.columns = ['特征名称','测试IV值']
         IVAll = pd.merge(IVSumSplitedSort,IVSumSplitedTest,on='特征名称',how='left')
-        IVAll.columns = ['特征名称','训练集IV值','测试集IV值']
 
         # 分箱结果保存
         workbook1 = openpyxl.Workbook()
@@ -268,36 +274,23 @@ class ScorecardEstablishClass():
         dataTypesAll.to_excel(self.pathSaved+'/2.数据处理过程.xlsx')
 
         print('步骤十：将筛选好的变量进行线性拟合,并输出评分卡分数')
-        # 重定义分数的线性拟合和分数刻度设置所在的类
+        # # 重定义分数的线性拟合和分数刻度设置所在的类
         LFWSC = LinearFitWithScoreScaleClass(self.ylabel,self.baseScore,self.pdo)
         # 训练集合分数
         print('训练集合分数')
-        (dataForLr,lrSmallPSummary,lrSmallPResult,ScoreFrame,ScoreRegroup) = LFWSC.linear_fit(dataForLrTrain[ivHighVarWOEName+[self.ylabel]],ivHighVarWOEName)
-        print(dataForLr)
-        print('最终回归结果',lrSmallPSummary)
-        # 逻辑回归结果pandas保存
-        lrSmallPResult['特征名称'] = lrSmallPResult['特征名称'].map(lambda x: x.replace('_Bin','').replace('_WOE',''))
-        # 加上IV值 
-        lrSmallPResult = pd.merge(lrSmallPResult,IVAll,on='特征名称',how='left')
-        # 加上psi值
-        feaNoCorrPsi = FeaStabSelectClass(self.psiThreshold).psi_claculate(dataForLrTrain[ivHighVarWOEName+[self.ylabel]],dataForSelectTest[ivHighVarWOEName+[self.ylabel]], self.ylabel)
-        feaNoCorrPsi['variable'] = feaNoCorrPsi['variable'].map(lambda x: x.replace('_Bin','').replace('_WOE',''))
-        feaNoCorrPsi.columns = ['特征名称','psi值']
-        lrSmallPResult = pd.merge(lrSmallPResult,feaNoCorrPsi,on='特征名称',how='left')
 
-        # 给分数打分表映射对应的分箱结果
-        ScoreRegroupBin = {}
-        for colName in ScoreRegroup:# 取对应的col
-            if colName != 'intercept':
-                colregroupFrame = dataForSelectTrain[[colName+'_Bin',colName+'_Bin_WOE']].drop_duplicates()
-            else:
-                colregroupFrame = pd.DataFrame([[1,1]],columns = ['intercept'+'_Bin','intercept'+'_Bin_WOE'])
-            colregroupBin = pd.merge(colregroupFrame,ScoreRegroup[colName],on=colName+'_Bin_WOE',how='left')  # join上分箱Bin结果
-            ScoreRegroupBin[colName] = colregroupBin
+        (trainForLr,trainlrSmallPSummary) = LFWSC.linear_fit(dataForLrTrain[ivHighVarWOEName+[self.ylabel]],ivHighVarWOEName)
+        (testForLr, testlrSmallPSummary) = LFWSC.linear_fit(dataForSelectTest[ivHighVarWOEName+[self.ylabel]+self.listDropRepeat],ivHighVarWOEName)
+        print(trainForLr['score'].head())
+        print(trainlrSmallPSummary)
 
-        lrSmallPResult.to_excel(self.pathSaved+'/6.模型结果summary.xlsx')
-        DisplayFormClass.write_excel_xlsx(self.pathSaved+'/10.分数打分表.xlsx','分数打分表',ScoreRegroupBin,workbook1,style = 1) 
 
-        return dataForLr
+        print ("步骤十一：展示模型效果")
+        print ("preThreshold:",self.preThreshold)
+        #编写主函数，存储对应的数据信息
+        modelDisplayClass = ModelDisplayClass(self.numForSplit,self.specialValue,self.ylabel,1)
+        modelDisplayClass.modelDisplayDF(trainForLr,testForLr,self.pathSaved,pre='score',preThreshold=self.preThreshold,probability='yPred')
+        return (trainForLr,testForLr)
+
 
 
