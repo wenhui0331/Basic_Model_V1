@@ -1,0 +1,2 @@
+from .ScorecardEstablishModule import ScorecardEstablishClass
+from .ScorecardEstablishModule import LinearFitWithScoreScaleClass

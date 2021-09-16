@@ -1,0 +1,1 @@
+from .ChiMergeSplitHandle import ChiMergeSplitClass

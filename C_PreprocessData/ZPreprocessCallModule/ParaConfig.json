@@ -1,0 +1,11 @@
+{
+    "thresholdMissingDele":1,
+    "styleFillingVar": "1",
+    "thresholdSingleDrop": 0.9,
+    "listNeedTransform": ["sample_type","samp_type"],
+    "ylabel": "label",
+    "listDropRepeat": ["busi_ctr_id","dt"],
+    "objectNeedRemove": ["busi_ctr_id","dt","name_sc", "code_sc", "report_no"],
+    "NumNeedRemove": ["label"],
+    "pathSaved": "C:/Users/Administrator/Desktop"
+}
