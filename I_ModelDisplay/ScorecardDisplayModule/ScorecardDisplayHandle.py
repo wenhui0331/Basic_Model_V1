@@ -181,43 +181,7 @@ class ModelDisplayClass(object):
             return chargeDf
         except Exception as e:
             print('I_ModelDisplay,ModelDisplayClass,confusion_matrix',':',e) 
-
-
-    def data_distribution(self,dataInitial,plotnumForSplit,pre):
-        '''
-        功能：绘制相关分布图，包括训练集分布图、测试集分布图，训练集好坏样本分布图、测试集好坏样本分布图
-
-        输入：
-        dataInitial：数据集 dataframe
-        plotnumForSplit： 绘制分布图时score值被拆分的个数  bigint
-        pre: 横坐标轴数据，用于绘图
-
-        输出：
-        用户绘制图片的信息 dataframe
-
-        备注：
-        此代码暂时未用到
-
-        管理记录：
-        1、created by  mawenhui 2021/09/14
-        '''
-        try:
-            group_split_list = EquiDistanceSplitClass(plotnumForSplit,self.specialValue,self.ylabel,self.singleBadRate01).equi_distance_split(dataInitial,pre)
-            print ("用户分Bin的list具体值v1:",group_split_list)
-            group_split_list.insert(0,dataInitial[pre].min())
-            group_split_list.append(dataInitial[pre].max())
-            print ("用户分Bin的list具体值v2:",group_split_list)
-            dataInitial['score_group'] = pd.cut(dataInitial[pre],group_split_list)
-            print (dataInitial['score_group'].map(lambda x:str(x).replace('(','').replace("]",'').split(",")).head())
-            print (dataInitial['score_group'].map(lambda x:0.5*float(str(x).replace('(','').replace("]",'').split(",")[0])).head())
-            dataInitial['score_avg'] = dataInitial['score_group'].map(lambda x:0.5*float(str(x).replace('(','').replace("]",'').split(",")[0]) + 0.5*float(str(x).replace('(','').replace("]",'').split(",")[1]))
-            dataInitial['score_avg'] = dataInitial['score_avg'].astype(float)
-            print (dataInitial['score_avg'].head(),dataInitial['score_avg'].dtypes)
-            return dataInitial[['score_avg',self.ylabel,pre]]
-        except Exception as e:
-            print('I_ModelDisplay,ModelDisplayClass,data_distribution',':',e) 
     
-
     def distin_ks(self,lab_true,lab_pred):
         '''
         功能：准备绘制ks图的数据集
@@ -266,12 +230,6 @@ class ModelDisplayClass(object):
         1、created by  mawenhui 2021/09/14
         '''
         try:
-            # print ("数据测试：",datatrain.shape,numForSplit,score)
-            # train_plot = self.data_distribution(datatrain,numForSplit,score)
-            # test_plot = self.data_distribution(datatest,numForSplit,score)
-            # print ("plot数据格式",train_plot.shape,test_plot.shape)
-            # print ("plot数据情况",train_plot.head(),test_plot.head())
-
 
             plt.rcParams['font.sans-serif'] = ['SimHei']
             # 设置显示正常字符
